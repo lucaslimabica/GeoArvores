@@ -59,17 +59,6 @@
             cursor: pointer;
             font-weight: bold;
         }
-
-        #insert-button {
-            margin-left: 5px;
-            padding: 5px 10px;
-            background-color: greenyellow;
-            color: white;
-            font-weight: bold;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -81,77 +70,118 @@
         <input type="text" id="search-input" placeholder="Search by specie, name or something...">
         <button id="search-button">Search</button>
         <button id="reload-button">Reload</button>
-        <button id="insert-button">Insert</button>
     </div>
 
-    <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script>
-        // Inicialização do mapa
         const map = L.map('map').setView([0, 0], 2);
 
-        // Adiciona tiles do OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // Lista de mapas
+        const baseMaps = {
+            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }),
+            "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            }),
+            "Topographic": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenTopoMap contributors'
+            })
+        };
+        
+        baseMaps.OpenStreetMap.addTo(map);        
 
-        let markers = []; // Array para guardar os marcadores
+        // ADD escala e camadas
+        L.control.layers(baseMaps).addTo(map);
+        L.control.scale().addTo(map);
 
-        // Função para adicionar árvore ao clicar no mapa
+        let markers = []; // Array para armazenar os marcadores
+
+        // Função para fechar todos os popups para usar na busca
+        function closeAllPopups() {
+            markers.forEach(({ marker }) => marker.closePopup());
+        }
+
+        // Adicionar marcador ao clicar no mapa
         map.on('click', async (e) => {
+            closeAllPopups();
+        
             const { lat, lng } = e.latlng;
-
-            // Solicitar informações via prompt
-            const nome = prompt("Nome da árvore:");
-            const especie = prompt("Espécie:");
-            const altura = prompt("Altura (em metros):");
-
+        
+            const nome = prompt("Tree's name:");
+            const especie = prompt("Species:");
+            const altura = prompt("Height (in metres):");
+        
             if (nome && especie && altura) {
                 const data = { nome, especie, altura, latitude: lat, longitude: lng };
-
-                // The POST
-                await fetch('http://127.0.0.1:5500/index.html/lambda/trees', {
+            
+                // Faz o POST para o servidor
+                await fetch('http://127.0.0.1:5000/api/arvores', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
-                });               
-
-                // Add mark
+                });
+            
+                // Adiciona marcador
                 const marker = L.marker([lat, lng])
                     .addTo(map)
-                    .bindPopup(`<b>${nome}</b><br>Espécie: ${especie}<br>Altura: ${altura}m`);
+                    .bindPopup(`<b>${nome}</b><br>Species: ${especie}<br>Height: ${altura}m`)
+                    .openPopup();
+            
                 markers.push({ marker, nome, especie });
-
-                alert('Árvore adicionada com sucesso!');
             }
         });
 
-        // Carregar árvores do backend
+        // Carregar árvores existentes
         async function loadArvores() {
-            const response = await fetch('http://localhost:5000/api/arvores');
+            const response = await fetch('http://127.0.0.1:5000/api/arvores');
             const data = await response.json();
-
+        
+            // Limpa popups abertos
+            closeAllPopups();
+        
+            // Adiciona árvores existentes ao mapa
             data.forEach(arvore => {
                 const marker = L.marker([arvore.latitude, arvore.longitude])
                     .addTo(map)
-                    .bindPopup(`<b>${arvore.nome}</b><br>Espécie: ${arvore.especie}<br>Altura: ${arvore.altura}m`);
-                markers.push({ marker, nome: arvore.nome, especie: arvore.especie });
+                    .bindPopup(`<b>${arvore.nome}</b><br>Species: ${arvore.especie}<br>Height: ${arvore.altura}m`);
+            
+                markers.push({ marker, nome: arvore.nome, especie: arvore.especie }); //Add no array
             });
         }
 
-        // Função de busca
-        document.getElementById('search-button').addEventListener('click', () => {
-            const searchText = document.getElementById('search-input').value.toLowerCase();
+        // Função para remover um marcador da visualização
+        function hideMarker(markerToHide) {
+            markerToHide.removeFrom(map);
+        }
 
-            // Filtra os marcadores
+        // Função para filtrar e ocultar marcadores com base em um texto de busca
+        function filterMarkers(searchText) {
+            // Itera sobre os marcadores e remove os que não correspondem
             markers.forEach(({ marker, nome, especie }) => {
                 if (nome.toLowerCase().includes(searchText) || especie.toLowerCase().includes(searchText)) {
-                    marker.openPopup(); // Abre o popup do marcador filtrado
-                    map.setView(marker.getLatLng(), 15); // Centraliza o mapa no marcador
+                    marker.addTo(map); // Adiciona ao mapa se corresponder
+                } else {
+                    hideMarker(marker); // Remove do mapa se não corresponder
                 }
             });
+        }
+
+        // Evento do botão de busca
+        document.getElementById('search-button').addEventListener('click', () => {
+            const searchText = document.getElementById('search-input').value.toLowerCase();
+            filterMarkers(searchText);
         });
 
+        // Evento do botão de recarregar para mostrar todos os marcadores
+        document.getElementById('reload-button').addEventListener('click', () => {
+            markers.forEach(({ marker }) => {
+                marker.addTo(map); // Reexibe todos os marcadores no mapa
+            });
+        });  
+
         // Carregar árvores ao iniciar o mapa
-        loadArvores();
+        window.onload = loadArvores;
     </script>
 </body>
 </html>

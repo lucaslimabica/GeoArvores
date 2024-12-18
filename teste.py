@@ -16,21 +16,14 @@ try:
 
     # Criação da tabela Tb_Tree
     create_table_query = """
-    CREATE TABLE IF NOT EXISTS public."Tb_Tree" (
-        id SERIAL PRIMARY KEY,
-        nome VARCHAR(100) NOT NULL,
-        especie VARCHAR(100) NOT NULL,
-        altura FLOAT NOT NULL,
-        longitude FLOAT NOT NULL,
-        latitude FLOAT NOT NULL
-    );
+    INSERT INTO public."Tb_Tree" (nome,especie,altura,longitude,latitude) VALUES ("Pinheiro", "Pinheiro");
     """
     
     # Executando a query
     cursor.execute(create_table_query)
     conn.commit()  # Confirmar a transação
 
-    print("Tabela 'Tb_Tree' criada com sucesso!")
+    print("Insert na Tb_Tree feito!")
 
 except Exception as e:
     print("Erro ao criar a tabela:", e)
