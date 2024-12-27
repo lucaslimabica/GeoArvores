@@ -62,7 +62,6 @@
     </style>
 </head>
 <body>
-    <!-- Map -->
     <div id="map"></div>
 
     <!-- Seaaaarching -->
@@ -174,11 +173,12 @@
         });
 
         // Evento do botão de recarregar para mostrar todos os marcadores
-        document.getElementById('reload-button').addEventListener('click', () => {
-            markers.forEach(({ marker }) => {
-                marker.addTo(map); // Reexibe todos os marcadores no mapa
-            });
-        });  
+        //document.getElementById('reload-button').addEventListener('click', () => {
+        //    markers.forEach(({ marker }) => {
+        //        marker.addTo(map); // Reexibe todos os marcadores no mapa
+        //    });
+        //});
+        document.getElementById('reload-button').addEventListener('click', loadArvores) // Atualiza a page pela bd
 
         // Carregar árvores ao iniciar o mapa
         window.onload = loadArvores;
